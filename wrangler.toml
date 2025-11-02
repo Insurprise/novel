@@ -1,4 +1,4 @@
-name = "epub-reader-worker"
+name = "novel-2"
 main = "dist/index.js"
 compatibility_date = "2023-12-01"
 
