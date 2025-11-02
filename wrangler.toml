@@ -14,4 +14,4 @@ JWT_SECRET = "a-very-secret-and-strong-key"
 [[d1_databases]]
 binding = "DB" # 在代码中使用 "DB" 作为更短、更方便的绑定名称
 database_name = "epub_reader_db"
-database_id = "fc4abf3e-cebf-4003-a9f9-a777e440bf7d"
+database_id = "506ee63e-2081-497a-aafb-44a3f9b6840c"
