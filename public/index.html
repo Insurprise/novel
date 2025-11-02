@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>EPUB 阅读器</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="/epub.min.js"></script>
+    <style>
+        /* --- [ 样式表保持不变 ] --- */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            background-color: #f8f9fa; /* 稍微提亮背景色 */
+            color: #212529; /* 更深的默认文本色 */
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .container {
+            padding: 24px; /* 增加内边距 */
+            max-width: 800px;
+            margin: 24px auto;
+            background: #ffffff;
+            border-radius: 12px;
+            /* 调整了阴影，使其更柔和 */
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.07);
+            transition: all 0.3s ease;
+        }
+        .hidden { display: none !important; }
+
+        h1, h2, h3, h4 {
+            color: #1a202c;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 12px;
+            margin-top: 0;
+            margin-bottom: 20px; /* 统一下方间距 */
+        }
+
+        /* 分离了文本输入框和文件输入框的样式 */
+        input[type="text"],
+        input[type="password"] {
+            width: calc(100% - 24px); /* 调整宽度以适应 padding */
+            padding: 12px; /* 增加内边距 */
+            margin-bottom: 16px;
+            border: 1px solid #cbd5e0;
+            border-radius: 8px; /* 更圆的边角 */
+            transition: border-color 0.3s, box-shadow 0.3s;
+            font-size: 16px;
+        }
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            border-color: #3B82F6; /* 更改高亮色 */
+            outline: none;
+            /* 增加现代化的辉光效果 */
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        /* --- 按钮美化 --- */
+        button {
+            padding: 12px 22px; /* 增大按钮 */
+            border: none;
+            background-color: #3B82F6; /* 现代蓝色 */
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+        button:hover {
+            background-color: #2563EB; /* 悬停颜色加深 */
+        }
+        button:active {
+            transform: translateY(1px);
+        }
+
+        /* 次要按钮样式 */
+        .button-secondary {
+            background-color: #e2e8f0;
+            color: #4a5568;
+        }
+        .button-secondary:hover {
+            background-color: #cbd5e0;
+        }
+
+        #admin-panel {
+            background: #f7fafc; /* 使用更浅的背景 */
+            border: 1px solid #e2e8f0;
+            padding: 20px;
+            margin-bottom: 25px;
+            border-radius: 8px;
+        }
+
+        /* --- 书籍列表美化 --- */
+        #book-list ul {
+            list-style: none;
+            padding: 0;
+        }
+        #book-list li {
+            padding: 14px 18px; /* 增加列表项内边距 */
+            cursor: pointer;
+            border-bottom: 1px solid #eef2f7; /* 更浅的分割线 */
+            transition: background-color 0.2s, border-radius 0.2s;
+        }
+        #book-list li:last-child {
+            border-bottom: none;
+        }
+        #book-list li:hover {
+            background-color: #f8f9fa;
+            border-radius: 6px; /* 悬停时增加圆角 */
+        }
+        /* Style for error/info messages in book list */
+        #book-list li.info-message {
+            cursor: default;
+            color: #555;
+            font-style: italic;
+            background-color: transparent; /* Ensure no hover effect */
+        }
+
+
+        /* --- 阅读器翻页按钮美化 --- */
+        #viewer-container { position: relative; }
+        #viewer {
+            height: 80vh;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden; /* 确保子元素不会溢出圆角 */
+        }
+
+        #prev, #next {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 0; /* 重置内边距 */
+            background: rgba(0, 0, 0, 0.4); /* 更中性的背景 */
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 20px; /* 调整字体大小 */
+            border-radius: 50%;
+            width: 44px; /* 调整尺寸 */
+            height: 44px;
+            line-height: 44px; /* 垂直居中 */
+            text-align: center;
+            opacity: 0.7;
+            transition: background-color 0.3s ease, opacity 0.3s ease, width 0.3s ease, height 0.3s ease;
+        }
+        #prev:hover, #next:hover {
+             background: rgba(0, 0, 0, 0.6);
+             opacity: 1;
+        }
+        #prev { left: 15px; }
+        #next { right: 15px; }
+
+        .auth-toggle {
+            color: #3B82F6; /* 匹配新的主题色 */
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .auth-toggle:hover {
+            text-decoration: underline;
+        }
+        #viewer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        /* --- 上传区域美化 --- */
+        #upload-container {
+            margin-bottom: 20px;
+            padding: 20px;
+            border: 2px dashed #d1d5db; /* 现代化虚线框 */
+            border-radius: 8px;
+            background-color: #fafafa;
+            display: flex;
+            flex-direction: column; /* 垂直排列 */
+            align-items: center; /* 居中 */
+            gap: 12px; /* 元素间距 */
+            transition: border-color 0.3s, background-color 0.3s;
+        }
+        #upload-container:hover {
+            border-color: #3B82F6;
+            background-color: #fdfdff;
+        }
+
+        /* 美化文件上传按钮 */
+        input[type="file"] {
+            width: 100%;
+            font-size: 14px;
+            color: #555;
+        }
+        input[type="file"]::file-selector-button {
+            padding: 8px 16px;
+            border: none;
+            background-color: #e0e7ff; /* 淡蓝色背景 */
+            color: #3730a3; /* 深蓝色文字 */
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+            margin-right: 10px;
+        }
+        input[type="file"]::file-selector-button:hover {
+            background-color: #c7d2fe;
+        }
+        #upload-status {
+            margin-top: 5px;
+            font-weight: 500;
+        }
+
+        /* --- 搜索框美化 --- */
+        #search-container {
+            display: flex;
+            gap: 8px; /* 元素间距 */
+            margin-bottom: 15px;
+        }
+        #search-container input {
+            flex-grow: 1; /* 占据剩余空间 */
+            margin-bottom: 0; /* 移除 flex 布局下的多余间距 */
+        }
+
+        /* --- 书签列表美化 --- */
+        #bookmarks-container {
+            margin-top: 20px;
+        }
+        #bookmarks-list {
+            list-style: none;
+            padding: 0;
+        }
+        #bookmarks-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 4px; /* 调整内边距 */
+            border-bottom: 1px solid #eef2f7;
+            transition: background-color 0.2s;
+        }
+        #bookmarks-list li:hover {
+            background-color: #f8f9fa;
+        }
+        #bookmarks-list li span {
+            cursor: pointer;
+            color: #333;
+            flex: 1;
+        }
+         #bookmarks-list li span:hover {
+            color: #3B82F6;
+         }
+         #bookmarks-list li button {
+             padding: 5px 10px;
+             font-size: 12px;
+             font-weight: 500;
+             background-color: #e53e3e; /* 红色按钮 */
+         }
+         #bookmarks-list li button:hover {
+             background-color: #c53030;
+         }
+
+
+        /* --- 响应式设计 (移动端) --- */
+        @media (max-width: 768px) {
+            .container {
+                /* 在移动端，减少外边距和内边距 */
+                margin: 12px;
+                padding: 16px;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05); /* 保持一个非常微妙的阴影 */
+            }
+
+            h1 { font-size: 26px; }
+            h2 { font-size: 22px; }
+            h3 { font-size: 18px; }
+
+            button,
+            input[type="text"],
+            input[type="password"] {
+                /* 略微减小字体大小，以便在小屏幕上容纳更多内容 */
+                font-size: 15px;
+                padding: 12px;
+            }
+
+            /* --- 阅读器头部响应式 --- */
+            #viewer-header {
+                flex-wrap: wrap; /* 允许换行 */
+                gap: 10px;
+                justify-content: space-between;
+            }
+            #book-title {
+                flex-basis: 100%; /* 标题占据一整行 */
+                order: 1; /* 排序：将标题放在中间 */
+                text-align: center;
+                margin-bottom: 5px;
+                padding-bottom: 5px; /* 减少标题下边距 */
+                border: none; /* 移除移动端的标题边框 */
+            }
+            #back-to-library-btn {
+                order: 0; /* 排序：返回按钮在左上角 */
+                padding: 8px 12px; /* 减小按钮内边距 */
+                font-size: 14px;
+            }
+            #add-bookmark-btn {
+                order: 2; /* 排序：添加书签在右上角 */
+                padding: 8px 12px;
+                font-size: 14px;
+            }
+
+            /* --- 阅读器翻页按钮 --- */
+            #prev, #next {
+                /* 在移动端缩小翻页按钮，减少干扰 */
+                width: 38px;
+                height: 38px;
+                line-height: 38px;
+                font-size: 18px;
+                opacity: 0.6; /* 使其更透明 */
+            }
+            #prev { left: 10px; }
+            #next { right: 10px; }
+
+            /* 移动端悬停（点击）时才完全显示 */
+            #prev:hover, #next:hover {
+                opacity: 1;
+            }
+
+            /* --- 搜索框响应式 --- */
+            #search-container {
+                flex-direction: column; /* 垂直堆叠 */
+                gap: 10px;
+            }
+            #search-container input {
+                flex-grow: 0; /* 移除 flex-grow */
+                width: calc(100% - 24px); /* 确保宽度正确 */
+            }
+            #search-container button {
+                width: 100%; /* 按钮全宽 */
+            }
+
+            /* --- 上传区域 --- */
+            #upload-container {
+                padding: 15px;
+            }
+            /* 确保文件输入按钮不会过大 */
+            input[type="file"]::file-selector-button {
+                padding: 8px 12px;
+                font-size: 14px;
+            }
+
+            /* --- 登录表单 --- */
+            #auth-view p {
+                 font-size: 14px; /* 缩小提示文字 */
+            }
+        }
+
+        @media (max-width: 480px) {
+            /* 针对非常小的屏幕 */
+            .container {
+                margin: 0;
+                padding: 12px;
+                border-radius: 0; /* 屏幕边缘到边缘 */
+                box-shadow: none;
+                min-height: 100vh; /* 至少占满全屏高 */
+                box-sizing: border-box; /* 确保 padding 不会导致溢出 */
+            }
+
+            h1 { font-size: 22px; }
+            h2 { font-size: 18px; }
+
+            /* 使书签列表中的删除按钮更易于点击 */
+            #bookmarks-list li button {
+                padding: 8px 12px;
+            }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="auth-view" class="container">
+        <div id="login-form">
+            <h1>登录</h1>
+            <input type="text" id="login-username" placeholder="用户名">
+            <input type="password" id="login-password" placeholder="密码">
+            <button id="login-btn">登录</button>
+            <p>还没有账户？ <span class="auth-toggle" onclick="toggleAuthForms()">在此注册。</span></p>
+        </div>
+        <div id="register-form" class="hidden">
+            <h1>注册</h1>
+            <input type="text" id="register-username" placeholder="用户名">
+            <input type="password" id="register-password" placeholder="密码">
+            <button id="register-btn">注册</button>
+            <p>已有账户？ <span class="auth-toggle" onclick="toggleAuthForms()">在此登录。</span></p>
+        </div>
+        <p id="auth-error" style="color: red;"></p>
+    </div>
+
+    <div id="main-view" class="container hidden">
+        <div id="admin-panel" class="hidden">
+            <h2>管理员：WebDAV 配置</h2>
+            <input type="text" id="webdav-url" placeholder="WebDAV 链接">
+            <input type="text" id="webdav-username" placeholder="WebDAV 用户名">
+            <input type="password" id="webdav-password" placeholder="WebDAV 密码">
+            <button id="webdav-save-btn">保存配置</button>
+            <p id="webdav-status" style="color: green;"></p>
+        </div>
+
+        <div id="book-list">
+            <h2>我的书籍</h2>
+            <div id="upload-container">
+                <input type="file" id="epub-upload-input" accept=".epub">
+                <button id="upload-btn">上传书籍</button>
+                <p id="upload-status" style="margin-top: 5px;"></p>
+            </div>
+
+            <div id="search-container">
+                <input type="text" id="search-input" placeholder="搜索书籍...">
+                <button id="search-btn">搜索</button>
+                <button id="clear-search-btn" class="button-secondary">清除搜索</button>
+            </div>
+            <ul id="books"></ul>
+        </div>
+
+        <div id="viewer-container" class="hidden">
+            <div id="viewer-header">
+                <button id="back-to-library-btn" class="button-secondary">&larr; 返回书库</button>
+                <h3 id="book-title" style="text-align: center; flex-grow: 1; margin: 0 15px; border: none; padding: 0;"></h3>
+                <button id="add-bookmark-btn">添加书签</button>
+            </div>
+            <div id="viewer-wrapper" style="position: relative;">
+                 <div id="viewer"></div>
+                 <button id="prev">&lt;</button>
+                 <button id="next">&gt;</button>
+            </div>
+            <div id="bookmarks-container">
+                <h4>书签</h4>
+                <ul id="bookmarks-list"></ul>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // --- DOM Elements ---
+    const authView = document.getElementById('auth-view');
+    const mainView = document.getElementById('main-view');
+    const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
+    const adminPanel = document.getElementById('admin-panel');
+    const bookList = document.getElementById('book-list');
+    const viewerContainer = document.getElementById('viewer-container');
+    const bookTitle = document.getElementById('book-title');
+    const authError = document.getElementById('auth-error');
+    const booksUl = document.getElementById('books'); // Cache books UL
+
+    let book, rendition;
+    let currentBookPath = null;
+    let initialAuthCheckDone = false; // Flag to ensure initial check runs only once
+
+    // --- Debounce Helper ---
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    // --- API Helper ---
+    async function api(endpoint, options = {}) {
+        const response = await fetch('/api' + endpoint, options);
+        if (!response.ok) {
+            // Try to parse JSON error, fallback to status text
+            let errorData = { error: `请求失败，状态码：${response.status} ${response.statusText}` };
+            try {
+                errorData = await response.json();
+            } catch (e) { /* ignore json parsing error */ }
+            throw new Error(errorData.error || `请求失败，状态码：${response.status}`);
+        }
+        if (response.headers.get('Content-Type')?.includes('application/json')) {
+            return response.json();
+        }
+        return response; // Return response for non-JSON cases like book streaming
+    }
+
+
+    // --- Auth Logic ---
+    function toggleAuthForms() {
+        loginForm.classList.toggle('hidden');
+        registerForm.classList.toggle('hidden');
+        authError.textContent = '';
+    }
+
+    document.getElementById('login-btn').addEventListener('click', async () => {
+        const username = document.getElementById('login-username').value;
+        const password = document.getElementById('login-password').value;
+        authError.textContent = ''; // Clear previous errors
+        try {
+            // *** CHANGE: Login API call now returns isAdmin status ***
+            const loginResult = await api('/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            // *** Login successful, switch view immediately ***
+            showMainView(loginResult.isAdmin);
+        } catch (error) {
+            authError.textContent = error.message;
+        }
+    });
+
+    document.getElementById('register-btn').addEventListener('click', async () => {
+        const username = document.getElementById('register-username').value;
+        const password = document.getElementById('register-password').value;
+        authError.textContent = ''; // Clear previous errors
+        try {
+            await api('/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            alert('注册成功！请登录。');
+            toggleAuthForms();
+        } catch (error) {
+            authError.textContent = error.message;
+        }
+    });
+
+    // --- NEW: Function to show main view after successful auth check/login ---
+    async function showMainView(isAdmin) {
+        authView.classList.add('hidden');
+        mainView.classList.remove('hidden');
+
+        // Setup admin panel if user is admin
+        if (isAdmin) {
+            setupAdminPanel(); // Safe to call even if already set up
+        }
+
+        // Load books, handling potential WebDAV config errors
+        await loadBooks();
+    }
+
+    // --- Debounced Save Progress Function ---
+    const saveProgress = debounce(async (bookId, cfi) => {
+        if (!bookId || !cfi) return;
+        console.log("正在保存进度...", cfi);
+        try {
+            await api('/progress', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ book_identifier: bookId, cfi: cfi })
+            });
+        } catch (error) {
+            console.error('保存进度失败:', error);
+        }
+    }, 2000); // Save every 2 seconds max
+
+
+    // --- Book & Reader Logic (MODIFIED to handle errors gracefully) ---
+    async function loadBooks(query = '') {
+        const booksUl = document.getElementById('books'); // Use cached element
+        booksUl.innerHTML = '<li class="info-message">加载书籍中...</li>'; // Loading message
+
+        try {
+            const endpoint = query ? `/books?q=${encodeURIComponent(query)}` : '/books';
+            const books = await api(endpoint);
+
+            booksUl.innerHTML = ''; // Clear loading/previous messages
+            if (books.length === 0) {
+                const message = query
+                    ? `<li>未找到与“${query}”匹配的书籍。</li>`
+                    : '<li class="info-message">WebDAV 服务器上未找到 EPUB 书籍，或尚未配置。</li>'; // Update message
+                booksUl.innerHTML = message;
+            } else {
+                books.forEach(bookItem => {
+                    const li = document.createElement('li');
+                    li.textContent = bookItem.name;
+                    li.onclick = () => openBook(bookItem.path, bookItem.name);
+                    booksUl.appendChild(li);
+                });
+            }
+        } catch (error) {
+            console.error('加载书籍出错:', error);
+             // *** CHANGE: Display specific error messages ***
+             let errorMessage = `<li>加载书籍时发生错误。</li>`;
+             if (error.message.includes('WebDAV service is not configured')) {
+                 errorMessage = `<li class="info-message">请先在管理员面板中配置 WebDAV 服务。</li>`;
+             } else if (error.message.includes('WebDAV authentication failed')) {
+                  errorMessage = `<li class="info-message">WebDAV 认证失败，请检查管理员配置。</li>`;
+             } else if (error.message.includes('请求失败，状态码：401')) {
+                  // This might happen if the token expires while loading books
+                  // Redirect to login
+                  showAuthView();
+                  return; // Stop further execution in this case
+             }
+             booksUl.innerHTML = errorMessage;
+        }
+    }
+
+
+    // --- Search Logic ---
+    document.getElementById('search-btn').addEventListener('click', () => {
+        const query = document.getElementById('search-input').value;
+        loadBooks(query);
+    });
+
+    document.getElementById('clear-search-btn').addEventListener('click', () => {
+        document.getElementById('search-input').value = '';
+        loadBooks();
+    });
+
+    document.getElementById('search-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            loadBooks(e.target.value);
+        }
+    });
+
+    // --- Upload Logic ---
+    document.getElementById('upload-btn').addEventListener('click', async () => {
+        const fileInput = document.getElementById('epub-upload-input');
+        const statusEl = document.getElementById('upload-status');
+        const file = fileInput.files[0];
+
+        if (!file) {
+            statusEl.textContent = '请选择要上传的文件。';
+            statusEl.style.color = 'red';
+            return;
+        }
+
+        if (!file.name.toLowerCase().endsWith('.epub')) {
+            statusEl.textContent = '文件类型无效。只允许上传 .epub 文件。';
+            statusEl.style.color = 'red';
+            return;
+        }
+
+        statusEl.textContent = '上传中...';
+        statusEl.style.color = 'blue';
+
+        const formData = new FormData();
+        formData.append('book', file);
+
+        try {
+            const response = await fetch('/api/upload', { // Use fetch directly for FormData
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                // Handle potential 401 Unauthorized during upload if token expired
+                if (response.status === 401) {
+                     showAuthView();
+                     throw new Error('认证已过期，请重新登录。');
+                }
+                throw new Error(result.error || '未知上传错误');
+            }
+
+            statusEl.textContent = '上传成功！';
+            statusEl.style.color = 'green';
+            fileInput.value = ''; // Clear the input
+            await loadBooks(); // Refresh the book list
+        } catch (error) {
+            statusEl.textContent = `错误：${error.message}`;
+            statusEl.style.color = 'red';
+        }
+    });
+
+
+    async function openBook(path, name) {
+        currentBookPath = path;
+        bookTitle.textContent = name;
+
+        bookList.classList.add('hidden');
+        viewerContainer.classList.remove('hidden');
+
+        // *** 关键修复：直接将 URL 传递给 ePub.js，让其处理 fetching ***
+        // 这样可以确保书籍内部的资源（如 CSS、图片）能被正确加载。
+        book = ePub(`/api/book${path}`);
+        rendition = book.renderTo("viewer", { width: "100%", height: "100%" });
+
+        let startCfi = undefined;
+        try {
+            const progress = await api(`/progress${path}`);
+            startCfi = progress.cfi;
+            console.log('从此处恢复:', startCfi);
+        } catch (e) {
+             if (e.message.includes('401')) {
+                  showAuthView();
+                  alert('获取阅读进度失败：认证已过期，请重新登录。');
+                  closeBook();
+                  return;
+             }
+            console.log('未找到保存的进度，从头开始。');
+        }
+
+        // *** 关键修复：包裹 display 调用以捕获加载/渲染错误 ***
+        try {
+            await rendition.display(startCfi);
+        } catch (err) {
+            console.error("加载或渲染书籍时出错:", err);
+            // 尝试处理 fetch response 错误对象
+            if (err && err.status) {
+                const bookResponse = err;
+                if (bookResponse.status === 401) {
+                    showAuthView();
+                    alert('加载书籍失败：认证已过期，请重新登录。');
+                } else if (bookResponse.status === 404) {
+                    alert(`加载书籍失败：未找到文件 (${path})`);
+                } else if (bookResponse.status === 503) {
+                    alert('加载书籍失败：WebDAV 服务不可用或未配置。');
+                } else {
+                    alert(`加载书籍失败，状态码：${bookResponse.status}`);
+                }
+            } else {
+                // 处理其他通用错误
+                alert(`加载书籍时发生未知错误。请检查控制台获取详细信息。`);
+            }
+            closeBook();
+            return;
+        }
+
+        rendition.on("relocated", (location) => {
+            const cfi = location.start.cfi;
+            saveProgress(path, cfi);
+        });
+
+        document.getElementById('prev').onclick = () => rendition.prev();
+        document.getElementById('next').onclick = () => rendition.next();
+
+        await loadBookmarks(path);
+    }
+
+    function closeBook() {
+        if (book) {
+            book.destroy();
+            book = null;
+            rendition = null;
+        }
+        currentBookPath = null;
+        viewerContainer.classList.add('hidden');
+        bookList.classList.remove('hidden');
+         // Refresh book list in case a book failed to load or WebDAV became available
+         loadBooks();
+    }
+
+    document.getElementById('back-to-library-btn').addEventListener('click', closeBook);
+
+    // --- Bookmark Logic ---
+    async function loadBookmarks(bookId) {
+        const list = document.getElementById('bookmarks-list');
+        list.innerHTML = '<li>加载中...</li>';
+        try {
+            const bookmarks = await api(`/bookmarks${bookId}`);
+            list.innerHTML = '';
+            if (bookmarks.length === 0) {
+                list.innerHTML = '<li>暂无书签。</li>';
+            } else {
+                bookmarks.forEach(bm => {
+                    const li = document.createElement('li');
+                    const text = document.createElement('span');
+                    text.textContent = bm.label || `书签 ${new Date(bm.created_at).toLocaleDateString()}`;
+                    text.onclick = () => rendition.display(bm.cfi);
+
+                    const delBtn = document.createElement('button');
+                    delBtn.textContent = '删除';
+                    delBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        deleteBookmark(bm.id, bookId);
+                    };
+
+                    li.appendChild(text);
+                    li.appendChild(delBtn);
+                    list.appendChild(li);
+                });
+            }
+        } catch (error) {
+            console.error('无法加载书签：', error);
+             if (error.message.includes('401')) { // Handle potential 401
+                  showAuthView();
+                  alert('加载书签失败：认证已过期，请重新登录。');
+                  return;
+             }
+            list.innerHTML = '<li>加载书签时出错。</li>';
+        }
+    }
+
+    async function addBookmark() {
+        if (!rendition || !currentBookPath) return;
+
+        const cfi = rendition.currentLocation().start.cfi;
+        const label = prompt("为此书签输入一个标签（可选）：");
+
+        try {
+            await api('/bookmarks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    book_identifier: currentBookPath,
+                    cfi: cfi,
+                    label: label
+                })
+            });
+            await loadBookmarks(currentBookPath);
+        } catch (error) {
+            console.error("无法添加书签：", error);
+             if (error.message.includes('401')) { // Handle potential 401
+                  showAuthView();
+                  alert('添加书签失败：认证已过期，请重新登录。');
+                  return;
+             }
+            alert("错误：" + error.message);
+        }
+    }
+    document.getElementById('add-bookmark-btn').addEventListener('click', addBookmark);
+
+    async function deleteBookmark(bookmarkId, bookId) {
+        if (!confirm('您确定要删除此书签吗？')) return;
+        try {
+            await api(`/bookmark/${bookmarkId}`, { method: 'DELETE' });
+            await loadBookmarks(bookId);
+        } catch (error) {
+             console.error("无法删除书签：", error);
+              if (error.message.includes('401')) { // Handle potential 401
+                  showAuthView();
+                  alert('删除书签失败：认证已过期，请重新登录。');
+                  return;
+             }
+            alert("错误：" + error.message);
+        }
+    }
+
+
+    // --- Admin Logic ---
+    async function setupAdminPanel() {
+        // Only show if not already visible to avoid redundant calls
+        if (adminPanel.classList.contains('hidden')) {
+            adminPanel.classList.remove('hidden');
+            const saveBtn = document.getElementById('webdav-save-btn');
+            const statusEl = document.getElementById('webdav-status');
+
+            // Load existing config if available
+            try {
+                // *** Use api helper which handles errors and potential 401 ***
+                const config = await api('/admin/webdav');
+                document.getElementById('webdav-url').value = config.url || '';
+                document.getElementById('webdav-username').value = config.username || '';
+            } catch (error) {
+                 // If 401, redirect to login
+                 if (error.message.includes('401')) {
+                      showAuthView();
+                      return;
+                 }
+                // It's ok if it fails (e.g., 404 if not configured), means no config yet.
+                console.log("获取 WebDAV 配置失败（可能是首次配置）：", error.message);
+            }
+
+            // Add event listener only once
+            if (!saveBtn.dataset.listenerAttached) {
+                 saveBtn.addEventListener('click', async () => {
+                    const url = document.getElementById('webdav-url').value;
+                    const username = document.getElementById('webdav-username').value;
+                    const password = document.getElementById('webdav-password').value;
+                    statusEl.textContent = '保存中...';
+                    statusEl.style.color = 'blue';
+                    try {
+                         // *** Use api helper ***
+                        await api('/admin/webdav', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ url, username, password })
+                        });
+                        statusEl.textContent = '配置已保存！';
+                        statusEl.style.color = 'green';
+                        document.getElementById('webdav-password').value = ''; // Clear password field
+                        setTimeout(() => statusEl.textContent = '', 3000);
+                        await loadBooks(); // Reload books after config change
+                    } catch (error) {
+                        statusEl.textContent = '错误：' + error.message;
+                        statusEl.style.color = 'red';
+                    }
+                });
+                saveBtn.dataset.listenerAttached = 'true';
+            }
+        }
+    }
+
+    // --- NEW: Function to explicitly show auth view and hide main view ---
+    function showAuthView() {
+        mainView.classList.add('hidden');
+        authView.classList.remove('hidden');
+        // Clear sensitive info potentially left in inputs if needed
+        document.getElementById('login-password').value = '';
+        document.getElementById('register-password').value = '';
+        if (document.getElementById('webdav-password')) {
+            document.getElementById('webdav-password').value = '';
+        }
+    }
+
+
+    // --- Initialization (Revised) ---
+    async function checkInitialAuth() {
+        if (initialAuthCheckDone) return; // Prevent multiple checks on hot reloads
+        initialAuthCheckDone = true;
+
+        // Try accessing a protected endpoint to see if the cookie is valid
+        try {
+            // Use /api/admin/webdav as it requires auth and tells us if user is admin
+            const response = await fetch('/api/admin/webdav'); // Use raw fetch to check status
+
+            if (response.ok) {
+                // User is logged in and is an admin
+                showMainView(true);
+            } else if (response.status === 403) {
+                // User is logged in but NOT an admin
+                // Still try to show main view, but don't setup admin panel
+                // We need another simple protected endpoint for non-admins
+                // For now, let's try /api/books (it requires auth but might fail)
+                 try {
+                     const booksCheck = await fetch('/api/books');
+                     if (booksCheck.status !== 401) { // Any status other than 401 means logged in
+                         showMainView(false);
+                     } else {
+                         showAuthView(); // If booksCheck is 401, definitely not logged in
+                     }
+                 } catch (e) {
+                     // Network error during books check, assume not logged in for safety
+                     showAuthView();
+                 }
+
+            } else {
+                // Any other error (like 401 Unauthorized) means not logged in
+                showAuthView();
+            }
+        } catch (error) {
+            // Network error during initial check, assume not logged in
+            console.error("Initial auth check failed:", error);
+            showAuthView();
+        }
+    }
+
+
+    // Run initial auth check on page load
+    checkInitialAuth();
+
+</script>
+</body>
+</html>

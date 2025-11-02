@@ -1,0 +1,17 @@
+name = "epub-reader-worker"
+main = "dist/index.js"
+compatibility_date = "2023-12-01"
+
+
+[build]
+command = "npm run build"
+watch_dir = "src"
+
+[vars]
+# 重要提示：在生产环境中，请使用 `wrangler secret put JWT_SECRET` 设置密钥
+JWT_SECRET = "a-very-secret-and-strong-key"
+
+[[d1_databases]]
+binding = "DB" # 在代码中使用 "DB" 作为更短、更方便的绑定名称
+database_name = "epub_reader_db"
+database_id = "fc4abf3e-cebf-4003-a9f9-a777e440bf7d"

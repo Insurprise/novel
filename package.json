@@ -1,0 +1,23 @@
+{
+  "name": "epub-reader-worker",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "start": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "npm run build && vitest",
+    "build": "node build.js"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.10.0",
+    "esbuild": "^0.25.11",
+    "vitest": "^3.2.2",
+    "wrangler": "^3.0.0"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.5",
+    "bcryptjs": "^3.0.2",
+    "hono": "^4.10.3",
+    "webdav": "^5.8.0"
+  }
+}
